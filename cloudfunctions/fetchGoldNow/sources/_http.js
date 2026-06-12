@@ -5,6 +5,7 @@
 
 const https = require('https');
 const http = require('http');
+const { URL } = require('url');
 
 /**
  * 发送 HTTP GET 请求，返回 Promise
@@ -20,14 +21,19 @@ function fetch(url, opts = {}) {
     const timeout = opts.timeout || 5000;
     let data = '';
 
-    const req = mod.request(url, {
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (isHttps ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': '*/*',
         ...opts.headers
       }
-    }, (res) => {
+    };
+
+    const req = mod.request(options, (res) => {
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => { resolve(data); });
     });

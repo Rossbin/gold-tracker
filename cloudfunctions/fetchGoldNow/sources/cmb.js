@@ -37,6 +37,9 @@ class CMBSource extends BaseSource {
     const sell = parseFloat(item.curPrice);
     const change = parseFloat(item.upDown);
     const preClose = parseFloat(item.preClose || item.lastClose || 0);
+    const high = parseFloat(item.high || 0);
+    const low = parseFloat(item.low || 0);
+    const open = parseFloat(item.open || 0);
     const mid = preClose ? (sell + preClose) / 2 : sell;
 
     return {
@@ -44,6 +47,9 @@ class CMBSource extends BaseSource {
       buyPrice: preClose || null,
       sellPrice: sell,
       midPrice: mid,
+      highPrice: high || null,
+      lowPrice: low || null,
+      openPrice: open || null,
       change,
       changePct: preClose ? (change / preClose) * 100 : null,
       source: 'cmb-api',

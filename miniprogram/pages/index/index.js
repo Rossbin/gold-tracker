@@ -4,33 +4,27 @@ const fmt = require('../../utils/format');
 
 const BANK_ORDER = ['CMB', 'ICBC', 'CCB', 'BOC', 'ABC', 'BCM'];
 const BANK_COLORS = {
-  CMB:  '#e60012',  // 招行红
-  ICBC: '#c8102e',  // 工行红
-  CCB:  '#005bac',  // 建行蓝
-  BOC:  '#b71c1c',  // 中行红
-  ABC:  '#007d33',  // 农行绿
-  BCM:  '#003c8f'   // 交行蓝
+  CMB:  '#e60012',
+  ICBC: '#c8102e',
+  CCB:  '#005bac',
+  BOC:  '#b71c1c',
+  ABC:  '#007d33',
+  BCM:  '#003c8f'
 };
 
 Page({
   data: {
-    // 银行积存金
     list: [],
-    // 国际金价
     international: null,
-    // 首饰金价
     jewelry: null,
     jewelryBrands: [],
-    // UI 状态
     loading: false,
     refreshing: false,
     autoRefreshing: true,
     serverTime: null,
     lastUpdateTime: null,
     errorMsg: '',
-    bankColors: BANK_COLORS,
-    // 展开/收起首饰金价
-    jewelryExpanded: false
+    bankColors: BANK_COLORS
   },
 
   _timer: null,
@@ -86,15 +80,24 @@ Page({
       const list = (r.bankData || r.list || []).map(item => {
         const prev = this._prevPrices[item.bank];
         const changed = prev && prev.sellPrice && Math.abs(item.sellPrice - prev.sellPrice) > 0.3;
+        const isUp = item.change > 0;
+        const isDown = item.change < 0;
+
         return {
           ...item,
           sellPriceText: fmt.formatPrice(item.sellPrice),
           buyPriceText: fmt.formatPrice(item.buyPrice),
+          highPriceText: fmt.formatPrice(item.highPrice),
+          lowPriceText: fmt.formatPrice(item.lowPrice),
+          openPriceText: fmt.formatPrice(item.openPrice),
           changeText: fmt.formatChange(item.change),
           changePctText: fmt.formatChangePct(item.changePct),
           quoteTimeText: fmt.formatTime(item.quoteTime),
           fetchTimeText: fmt.timeAgo(item.fetchedAt),
-          changed
+          changed,
+          isUp,
+          isDown,
+          isFlat: !isUp && !isDown
         };
       });
       list.sort((a, b) => BANK_ORDER.indexOf(a.bank) - BANK_ORDER.indexOf(b.bank));
@@ -181,11 +184,6 @@ Page({
     } finally {
       wx.hideLoading();
     }
-  },
-
-  // 展开/收起首饰金价
-  toggleJewelry() {
-    this.setData({ jewelryExpanded: !this.data.jewelryExpanded });
   },
 
   goSettings() {

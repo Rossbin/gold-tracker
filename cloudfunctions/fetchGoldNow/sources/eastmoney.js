@@ -35,11 +35,14 @@ class EastMoneySource extends BaseSource {
       buyPrice: lastClose,
       sellPrice: price,
       midPrice: (price + lastClose) / 2,
+      highPrice: d.f44 / 100,
+      lowPrice: d.f45 / 100,
+      openPrice: d.f46 / 100,
       change,
       changePct: d.f170 / 100,
       source: 'eastmoney-jsonp',
       quoteTime: new Date().toISOString(),
-      raw: { f43: d.f43, f60: d.f60, f169: d.f169, f170: d.f170 }
+      raw: { f43: d.f43, f44: d.f44, f45: d.f45, f46: d.f46, f60: d.f60, f169: d.f169, f170: d.f170 }
     };
   }
 }

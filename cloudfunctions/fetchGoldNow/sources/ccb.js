@@ -16,7 +16,7 @@ class CCBSource extends BaseSource {
       type: 'bank',
       timeout: 5000
     });
-    this.eastUrl = 'https://push2.eastmoney.com/api/qt/stock/get?secid=118.AU9999&fields=f43,f60,f169,f170&cb=jQuery_cb';
+    this.eastUrl = 'https://push2.eastmoney.com/api/qt/stock/get?secid=118.AU9999&fields=f43,f44,f45,f46,f60,f169,f170&cb=jQuery_cb';
     this.SPREAD = 0.8; // 元/克
   }
 
@@ -41,6 +41,9 @@ class CCBSource extends BaseSource {
       buyPrice,
       sellPrice: parseFloat(sellPrice.toFixed(2)),
       midPrice: parseFloat(midPrice.toFixed(2)),
+      highPrice: d.f44 / 100,
+      lowPrice: d.f45 / 100,
+      openPrice: d.f46 / 100,
       change,
       changePct: d.f170 / 100,
       source: 'ccb-eastproxy',

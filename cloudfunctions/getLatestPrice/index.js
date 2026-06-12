@@ -2,8 +2,8 @@
  * 微信云函数 —— getLatestPrice
  *
  * 职责：
- *   - 从 gold_prices 读取每家银行最新的一条价格（主卡片）
- *   - 从 gold_extra 读取首饰金价和国际金价（额外参考）
+ *   - 从 gold_prices 读取每家银行最新的一条价格（含 high/low/open）
+ *   - 从 gold_extra 读取首饰金价和国际金价
  * 调用方：小程序首页（轮询拉取）
  */
 
@@ -42,6 +42,9 @@ exports.main = async (event, context) => {
         buyPrice: doc.buyPrice,
         sellPrice: doc.sellPrice,
         midPrice: doc.midPrice,
+        highPrice: doc.highPrice,
+        lowPrice: doc.lowPrice,
+        openPrice: doc.openPrice,
         change: doc.change,
         changePct: doc.changePct,
         source: doc.source,

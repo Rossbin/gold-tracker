@@ -24,28 +24,71 @@
       class="card {{item.changed ? 'card-flash' : ''}}"
       style="border-left-color: {{bankColors[item.bank]}}"
     >
-      <view class="card-row1">
+      <!-- 银行名称 + 品种 -->
+      <view class="card-header">
         <view class="bank-name" style="color: {{bankColors[item.bank]}}">{{item.bankName}}</view>
         <view class="product-tag">{{item.product}}</view>
       </view>
-      <view class="card-row2">
-        <view class="price-block">
-          <view class="price-label">银行卖出（元/克）</view>
-          <view class="price-value">{{item.sellPriceText}}</view>
+
+      <!-- 实时价格（大数字） -->
+      <view class="card-main-price">
+        <view class="main-label">实时积存金价格</view>
+        <view class="main-value">{{item.sellPriceText}}</view>
+        <view class="main-unit">元/克</view>
+      </view>
+
+      <!-- 涨跌信息行 -->
+      <view class="card-change-row">
+        <view class="change-badge {{item.isUp ? 'up' : item.isDown ? 'down' : 'flat'}}">
+          <text class="change-arrow">{{item.isUp ? '▲' : item.isDown ? '▼' : '—'}}</text>
+          <text>{{item.changePctText}}</text>
         </view>
-        <view class="price-block">
-          <view class="price-label">银行买入（元/克）</view>
-          <view class="price-value-secondary">{{item.buyPriceText}}</view>
+        <view class="change-amount {{item.isUp ? 'up' : item.isDown ? 'down' : 'flat'}}">
+          涨跌额: {{item.changeText}} 元
         </view>
       </view>
-      <view class="card-row3">
-        <view class="change {{item.change > 0 ? 'up' : item.change < 0 ? 'down' : 'flat'}}">
-          {{item.changeText}} ({{item.changePctText}})
+
+      <!-- 分割线 -->
+      <view class="card-divider"></view>
+
+      <!-- 详细数据：最高/最低/买入 -->
+      <view class="card-details">
+        <view class="detail-item">
+          <view class="detail-icon">↑</view>
+          <view class="detail-content">
+            <view class="detail-label">今日最高价</view>
+            <view class="detail-value">{{item.highPriceText || '--'}}</view>
+          </view>
         </view>
-        <view class="source">来源: {{item.source}}</view>
+        <view class="detail-item">
+          <view class="detail-icon down-icon">↓</view>
+          <view class="detail-content">
+            <view class="detail-label">今日最低价</view>
+            <view class="detail-value">{{item.lowPriceText || '--'}}</view>
+          </view>
+        </view>
+        <view class="detail-item">
+          <view class="detail-icon">💰</view>
+          <view class="detail-content">
+            <view class="detail-label">银行买入</view>
+            <view class="detail-value">{{item.buyPriceText || '--'}}</view>
+          </view>
+        </view>
       </view>
-      <view class="card-row4">
-        <text class="time-text">报价: {{item.quoteTimeText}}</text>
+
+      <!-- 分割线 -->
+      <view class="card-divider"></view>
+
+      <!-- 底部信息 -->
+      <view class="card-footer">
+        <view class="footer-left">
+          <text class="footer-icon">📊</text>
+          <text class="footer-text">最新采集</text>
+          <text class="footer-time">{{item.quoteTimeText}}</text>
+        </view>
+        <view class="footer-right">
+          <text class="source-text">{{item.source}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -53,25 +96,26 @@
   <!-- ========== 国际金价 ========== -->
   <view class="section-title">🌍 国际金价</view>
   <view class="card intl-card" wx:if="{{international}}">
-    <view class="card-row1">
-      <view class="bank-name intl-color">XAU/USD → CNY</view>
-      <view class="product-tag">国际现货</view>
+    <view class="card-header">
+      <view class="bank-name intl-color">国际现货黄金</view>
+      <view class="product-tag">XAU/USD</view>
     </view>
-    <view class="card-row2">
-      <view class="price-block">
-        <view class="price-label">折合人民币（元/克）</view>
-        <view class="price-value intl-price">{{international.sellPriceText}}</view>
-      </view>
-      <view class="price-block" wx:if="{{international.rawPriceUSD}}">
-        <view class="price-label">美元价（$/oz）</view>
-        <view class="price-value-secondary">${{international.rawPriceUSD}}</view>
+    <view class="card-main-price">
+      <view class="main-label">折合人民币（元/克）</view>
+      <view class="main-value intl-price">{{international.sellPriceText}}</view>
+    </view>
+    <view class="card-change-row">
+      <view class="change-badge {{international.change > 0 ? 'up' : international.change < 0 ? 'down' : 'flat'}}">
+        <text>{{international.changeText}} ({{international.changePctText}})</text>
       </view>
     </view>
-    <view class="card-row3">
-      <view class="change {{international.change > 0 ? 'up' : international.change < 0 ? 'down' : 'flat'}}">
-        {{international.changeText}} ({{international.changePctText}})
+    <view class="card-footer" wx:if="{{international.rawPriceUSD}}">
+      <view class="footer-left">
+        <text class="footer-text">美元价: ${{international.rawPriceUSD}}/oz</text>
       </view>
-      <view class="source">汇率: {{international.fxRate}}</view>
+      <view class="footer-right">
+        <text class="footer-text">汇率: {{international.fxRate}}</text>
+      </view>
     </view>
   </view>
   <view class="empty-hint" wx:else>
