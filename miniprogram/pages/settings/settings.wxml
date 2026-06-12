@@ -1,0 +1,40 @@
+<!-- pages/settings/settings.wxml -->
+<view class="page">
+  <view class="section">
+    <view class="section-title">刷新频率</view>
+    <view class="section-desc">设置小程序自动拉取金价的时间间隔（更短 = 流量和云函数调用更多）</view>
+    <view class="options">
+      <view
+        wx:for="{{intervalOptions}}"
+        wx:key="value"
+        class="option {{currentInterval === item.value ? 'option-active' : ''}}"
+        data-value="{{item.value}}"
+        bindtap="onSelectInterval"
+      >
+        <text class="option-label">{{item.label}}</text>
+        <text wx:if="{{currentInterval === item.value}}" class="option-check">✓</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">异动推送（暂未开放）</view>
+    <view class="section-desc">当金价在 1 分钟内波动超过 1% 时，通过微信消息提醒</view>
+    <switch checked="{{notifyEnabled}}" bindchange="onToggleNotify" disabled />
+  </view>
+
+  <view class="section">
+    <view class="section-title">关于</view>
+    <view class="info-line">数据源：6 家银行官网 + 上海黄金交易所 + 东方财富 + 京东金融</view>
+    <view class="info-line">部署：微信云开发（云函数 + 云数据库）</view>
+    <view class="info-line">版本：1.0.0</view>
+  </view>
+
+  <view class="action-bar">
+    <button class="btn-save" bindtap="onSave">保存设置</button>
+  </view>
+
+  <view class="footer">
+    数据来自公开行情源，仅供参考，不构成任何投资建议；实际成交以各银行柜台为准。
+  </view>
+</view>

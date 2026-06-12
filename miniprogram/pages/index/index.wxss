@@ -1,0 +1,186 @@
+/* pages/index/index.wxss */
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+  color: #e0e0e0;
+  padding-bottom: 140rpx;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.header {
+  padding: 32rpx 32rpx 16rpx;
+  text-align: center;
+}
+
+.header-title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 2rpx;
+  text-shadow: 0 0 16rpx rgba(255, 215, 0, 0.3);
+}
+
+.header-subtitle {
+  font-size: 24rpx;
+  color: #888;
+  margin-top: 8rpx;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 32rpx;
+  margin: 16rpx 24rpx 0;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16rpx;
+  font-size: 26rpx;
+}
+
+.toolbar-info {
+  color: #888;
+}
+
+.toolbar-btn {
+  color: #ffd700;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid #ffd700;
+  border-radius: 8rpx;
+}
+
+.card-list {
+  padding: 16rpx 24rpx;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20rpx);
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 20rpx;
+  border-left: 8rpx solid #ffd700;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.card-flash {
+  animation: flash 1.2s ease;
+}
+
+@keyframes flash {
+  0%   { background: rgba(255, 215, 0, 0.18); transform: scale(1.02); }
+  50%  { background: rgba(255, 215, 0, 0.32); }
+  100% { background: rgba(255, 255, 255, 0.06); transform: scale(1); }
+}
+
+.card-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.bank-name {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.product-tag {
+  font-size: 22rpx;
+  background: rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.card-row2 {
+  display: flex;
+  gap: 32rpx;
+  margin-bottom: 16rpx;
+}
+
+.price-block {
+  flex: 1;
+}
+
+.price-label {
+  font-size: 22rpx;
+  color: #888;
+  margin-bottom: 6rpx;
+}
+
+.price-value {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #ffd700;
+  font-family: "DIN Alternate", monospace;
+}
+
+.price-value-secondary {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #ccc;
+  font-family: "DIN Alternate", monospace;
+}
+
+.card-row3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 26rpx;
+  margin-bottom: 8rpx;
+}
+
+.change.up   { color: #ff5252; }
+.change.down { color: #4caf50; }
+.change.flat { color: #888; }
+
+.source {
+  color: #666;
+  font-size: 22rpx;
+}
+
+.card-row4 {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20rpx;
+  color: #555;
+  margin-top: 8rpx;
+}
+
+.footer {
+  text-align: center;
+  padding: 40rpx 32rpx 32rpx;
+  color: #555;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.fab {
+  position: fixed;
+  right: 32rpx;
+  bottom: 48rpx;
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+  color: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8rpx 24rpx rgba(255, 215, 0, 0.4);
+  z-index: 99;
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.fab-label {
+  font-size: 20rpx;
+  font-weight: 600;
+  margin-top: 4rpx;
+}

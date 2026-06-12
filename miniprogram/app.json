@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "navigationBarTitleText": "积存金金价",
+    "navigationBarBackgroundColor": "#1a1a2e",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0f0f1e"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
