@@ -48,8 +48,18 @@
   border-radius: 8rpx;
 }
 
+/* 分区标题 */
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #ccc;
+  padding: 24rpx 32rpx 12rpx;
+  letter-spacing: 1rpx;
+}
+
+/* ========== 银行卡片 ========== */
 .card-list {
-  padding: 16rpx 24rpx;
+  padding: 0 24rpx;
 }
 
 .card {
@@ -148,6 +158,86 @@
   margin-top: 8rpx;
 }
 
+.time-text {
+  color: #555;
+}
+
+/* ========== 国际金价 ========== */
+.intl-card {
+  border-left-color: #42a5f5;
+}
+
+.intl-color {
+  color: #42a5f5 !important;
+}
+
+.intl-price {
+  color: #42a5f5 !important;
+}
+
+/* ========== 首饰金价 ========== */
+.jewelry-section {
+  padding: 0 24rpx;
+}
+
+.jewelry-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.jewelry-item {
+  flex: 0 0 calc(33.333% - 12rpx);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 16rpx;
+  padding: 20rpx 16rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.jewelry-brand {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin-bottom: 8rpx;
+}
+
+.jewelry-price {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #ffd700;
+  font-family: "DIN Alternate", monospace;
+}
+
+.jewelry-unit {
+  font-size: 20rpx;
+  color: #888;
+  font-weight: 400;
+}
+
+.jewelry-product {
+  font-size: 20rpx;
+  color: #666;
+  margin-top: 4rpx;
+}
+
+.jewelry-note {
+  font-size: 20rpx;
+  color: #555;
+  text-align: center;
+  margin-top: 16rpx;
+  padding-bottom: 8rpx;
+}
+
+/* ========== 空提示 ========== */
+.empty-hint {
+  text-align: center;
+  color: #555;
+  font-size: 24rpx;
+  padding: 32rpx;
+}
+
+/* ========== 底部 ========== */
 .footer {
   text-align: center;
   padding: 40rpx 32rpx 32rpx;
@@ -156,6 +246,11 @@
   line-height: 1.6;
 }
 
+.footer-tip {
+  color: #555;
+}
+
+/* ========== 悬浮按钮 ========== */
 .fab {
   position: fixed;
   right: 32rpx;
