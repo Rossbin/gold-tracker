@@ -69,7 +69,7 @@ exports.main = async (event, context) => {
     const extraTasks = extraResults.map(r => {
       return db.collection('gold_extra').add({
         data: {
-          type: r.source.startsWith('gold-api') ? 'international' : 'jewelry',
+          type: (r.source.startsWith('gold-api') || r.source === 'tencent-comex') ? 'international' : 'jewelry',
           name: r.bankName || r.name,
           data: r,
           fetchedAt: now,

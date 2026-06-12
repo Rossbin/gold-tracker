@@ -1,18 +1,11 @@
 /**
- * 东方财富 —— 黄金实时报价
+ * 东方财富 —— 黄金实时报价（最稳定的 Au99.99 基准源）
  *
  * 数据源：push2.eastmoney.com/api/qt/stock/get?secid=118.AU9999
- * secid 编码：上海金交所品种 = 118. 前缀
- * 返回：JSONP（jQuery 回调），需截取括号内
  */
 
 const BaseSource = require('./_base');
-
-function getHttp() {
-  try { return require('request-promise'); } catch (e) {}
-  try { return require('axios'); } catch (e) {}
-  return null;
-}
+const { fetch, parseJSONP } = require('./_http');
 
 class EastMoneySource extends BaseSource {
   constructor() {
@@ -22,45 +15,20 @@ class EastMoneySource extends BaseSource {
       type: 'backup',
       timeout: 5000
     });
-    this.url = 'https://push2.eastmoney.com/api/qt/stock/get';
-    this.secid = '118.AU9999';
-    this.fields = 'f43,f44,f45,f46,f60,f169,f170,f171,f168,f50,f167,f117';
-    // f43=最新价×100, f44=最高×100, f45=最低×100, f46=今开×100, f60=昨收×100, f169=涨跌额×100, f170=涨跌幅%
+    this.url = 'https://push2.eastmoney.com/api/qt/stock/get?secid=118.AU9999&fields=f43,f44,f45,f46,f60,f169,f170,f50,f167&cb=jQuery_cb';
   }
 
   async fetchOne() {
-    const http = getHttp();
-    if (!http) throw new Error('no http client');
+    const body = await fetch(this.url, { timeout: this.timeout });
+    const data = parseJSONP(body);
 
-    const url = `${this.url}?secid=${this.secid}&fields=${this.fields}&cb=jQuery_cb`;
-
-    let body;
-    if (http.default) {
-      const r = await http.get(url, { timeout: this.timeout, headers: { 'User-Agent': 'Mozilla/5.0' } });
-      body = r.data;
-    } else {
-      body = await http({
-        url,
-        method: 'GET',
-        timeout: this.timeout,
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
-    }
-
-    // 截取 jQuery_cb({...})
-    if (typeof body === 'string') {
-      const m = body.match(/jQuery_cb\((.*)\)/s) || body.match(/^[^(]*\((.*)\)$/s);
-      if (m) {
-        try { body = JSON.parse(m[1]); } catch (e) {}
-      }
-    }
-
-    if (!body || !body.data) throw new Error('eastmoney: no data');
-    const d = body.data;
+    if (!data || !data.data) throw new Error('eastmoney: no data');
+    const d = data.data;
     const price = d.f43 / 100;
     const lastClose = d.f60 / 100;
     const change = d.f169 / 100;
-    if (!price) throw new Error('eastmoney: price is 0');
+
+    if (!price || price < 100) throw new Error('eastmoney: invalid price ' + price);
 
     return {
       product: 'Au99.99',
@@ -68,10 +36,10 @@ class EastMoneySource extends BaseSource {
       sellPrice: price,
       midPrice: (price + lastClose) / 2,
       change,
-      changePct: d.f170 / 100,    // f170 已经是百分比
+      changePct: d.f170 / 100,
       source: 'eastmoney-jsonp',
       quoteTime: new Date().toISOString(),
-      raw: d
+      raw: { f43: d.f43, f60: d.f60, f169: d.f169, f170: d.f170 }
     };
   }
 }
