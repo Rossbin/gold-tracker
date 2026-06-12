@@ -27,9 +27,17 @@ exports.main = async (event, context) => {
   const now = Date.now();
   const STALE_THRESHOLD = 30 * 60 * 1000; // 30 分钟前视为 stale
 
-  // 2. 写入 gold_prices（仅银行/基准价格，有 sellPrice 的）
-  const bankResults = results.filter(r => r.ok && (r.sellPrice || r.midPrice));
-  const extraResults = results.filter(r => r.ok && !r.sellPrice && !r.midPrice); // 首饰金价等
+  // 2. 分类：银行数据进 gold_prices，国际金价/首饰金价进 gold_extra
+  const EXTRA_SOURCES = ['gold-api-com', 'jewelry-html', 'tencent-comex'];
+  const bankResults = results.filter(r =>
+    r.ok && (r.sellPrice || r.midPrice) && !EXTRA_SOURCES.includes(r.source)
+  );
+  const extraResults = results.filter(r =>
+    r.ok && (
+      EXTRA_SOURCES.includes(r.source) ||
+      (!r.sellPrice && !r.midPrice)
+    )
+  );
 
   let written = 0;
   if (bankResults.length > 0) {
