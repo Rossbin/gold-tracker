@@ -1,54 +1,100 @@
 /**
- * 本地测试入口 —— 跑一遍所有 6 行 + 3 备份源，看哪个能拿到数据
+ * 本地测试脚本 —— 测试所有金价源（无需云开发环境）
  *
- * 运行：node local-dev/test-fetcher.js
+ * 运行：
+ *   node test-fetcher.js
  *
- * 不依赖微信云开发；用 axios 代替 request-promise。
+ * 只测本地能通的数据源（东方财富、招行、gold-api.com、首饰金价）
+ * 工/建/中/农/交 云函数里走东财代理，这里走不了是正常的
  */
 
-const path = require('path');
-const { runAll, getAllBankSources, getAllBackupSources } = require('../cloudfunctions/fetchGoldNow/sources/_orchestrator');
+const { runAll } = require('../cloudfunctions/fetchGoldNow/sources/_orchestrator');
 
-(async () => {
-  console.log('========== 银行积存金金价本地抓取测试 ==========');
-  console.log('开始时间：', new Date().toLocaleString());
-  console.log('');
+const RESET  = '\x1b[0m';
+const GREEN  = '\x1b[32m';
+const RED    = '\x1b[31m';
+const YELLOW = '\x1b[33m';
+const BOLD   = '\x1b[1m';
 
-  const start = Date.now();
+function fmt(n) { return n == null ? '--' : n.toFixed(2); }
+function sign(n) { return n >= 0 ? '+' : ''; }
+function arrow(n) { return n >= 0 ? '▲' : '▼'; }
+
+async function main() {
+  console.log(`${BOLD}========== 银行积存金金价本地抓取测试 ==========${RESET}`);
+  console.log(`开始时间： ${new Date().toLocaleString('zh-CN')}\n`);
+
   const { results, succeeded, failed, totalLatencyMs } = await runAll();
-  const total = Date.now() - start;
 
-  console.log(`\n========== 抓取汇总 ==========`);
-  console.log(`总耗时: ${total}ms (并发 ${totalLatencyMs}ms)`);
-  console.log(`成功: ${succeeded} / ${results.length}    失败: ${failed}`);
-  console.log('');
+  console.log(`${BOLD}========== 抓取汇总 ==========${RESET}`);
+  console.log(`总耗时: ${totalLatencyMs}ms (并发)\n`);
 
-  // 表格化输出
-  const rows = results.map(r => ({
-    银行: r.bankName,
-    代码: r.bank,
-    卖出价: r.sellPrice ? r.sellPrice.toFixed(2) : '--',
-    买入价: r.buyPrice ? r.buyPrice.toFixed(2) : '--',
-    涨跌: r.change != null ? (r.change > 0 ? '+' : '') + r.change.toFixed(2) : '--',
-    来源: r.source,
-    耗时: (r.latencyMs || 0) + 'ms',
-    状态: r.ok ? '✅' : '❌'
-  }));
-  console.table(rows);
+  // 表头
+  const headers = ['#', '银行', '代码', '卖出价', '买入价', '涨跌', '来源', '耗时', '状态'];
+  const colWidths = [3, 18, 8, 10, 10, 10, 25, 8, 6];
+  const sep = '├' + colWidths.map(w => '─'.repeat(w)).join('┼') + '┤';
+  const row = (cells, status) => {
+    const parts = cells.map((c, i) => String(c).padEnd(colWidths[i]));
+    const s = status === 'ok' ? GREEN : status === 'warn' ? YELLOW : RED;
+    return '│ ' + parts.join(' │ ') + ' │' + (status ? ` ${s}${status}${RESET}` : '');
+  };
 
+  console.log(sep);
+  console.log(row(headers, ''));
+  console.log(sep);
+
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const status = r.ok ? (r.sellPrice ? '✅' : '⚠️') : '❌';
+    const change = r.change != null ? `${sign(r.change)}${Math.abs(r.change).toFixed(2)}` : '--';
+    const source = r.source || (r.error ? r.error.slice(0, 20) : '--');
+    console.log(row([
+      i,
+      r.bankName || r.displayName || r.name || '--',
+      r.bank || '--',
+      r.sellPrice != null ? fmt(r.sellPrice) : '--',
+      r.buyPrice != null ? fmt(r.buyPrice) : '--',
+      change,
+      source,
+      r.latencyMs ? `${r.latencyMs}ms` : '--'
+    ], r.ok ? (r.sellPrice ? 'ok' : 'warn') : 'fail'));
+  }
+  console.log(sep);
+
+  console.log(`\n${BOLD}========== 成功 ${succeeded} / ${results.length} ==========${RESET}`);
   if (failed > 0) {
-    console.log('\n========== 失败详情 ==========');
-    results.filter(r => !r.ok).forEach(r => {
-      console.log(`[${r.bank}] ${r.bankName} :: ${r.error}`);
-    });
+    console.log(`\n${RED}失败详情：${RESET}`);
+    for (const r of results) {
+      if (!r.ok) {
+        console.log(`  [${r.bank || r.name}] ${r.error}`);
+      }
+    }
   }
 
-  console.log('\n提示:');
-  console.log('  - 工/建/中/农/交 部分依赖 cookie、登录态、浏览器渲染，本地环境 50% 概率失败属正常');
-  console.log('  - 招行 m.cmbchina.com 是最稳的源，部署到云函数后成功率会更高');
-  console.log('  - 东方财富、SGE、京东金融是第三方回退源');
-  process.exit(0);
-})().catch(err => {
-  console.error('Fatal:', err);
-  process.exit(1);
-});
+  // 首饰金价详情
+  const jewelryResult = results.find(r => r.source === 'jewelry-html' || r.source === 'jewelry');
+  if (jewelryResult && jewelryResult.brands && jewelryResult.brands.length > 0) {
+    console.log(`\n${BOLD}========== 首饰金价（参考，更新：${jewelryResult.quoteTime}） ==========${RESET}`);
+    for (const b of jewelryResult.brands.slice(0, 10)) {
+      console.log(`  ${b.brand} ${b.product}: ¥${b.price}元/克`);
+    }
+    console.log(`  ${YELLOW}注：数据来自 jinrijinjia.cn，可能滞后 1-3 天${RESET}`);
+  }
+
+  // 国际金价详情
+  const intlResult = results.find(r => r.source === 'gold-api-com');
+  if (intlResult && intlResult.ok) {
+    console.log(`\n${BOLD}========== 国际金价（参考） ==========${RESET}`);
+    const r = intlResult;
+    console.log(`  XAU/USD: $${r.raw?.priceUSD_oz?.toFixed(2)}/oz`);
+    console.log(`  换算CNY: ¥${r.raw?.priceCNY_g?.toFixed(2)}/克 (汇率 ${r.raw?.fxRate?.toFixed(4)})`);
+    console.log(`  涨跌幅: ${sign(r.change)}${r.change?.toFixed(2)}元 (${r.changePct?.toFixed(2)}%)`);
+  }
+
+  console.log(`\n提示:`);
+  console.log(`  - 工/建/中/农/交 本地走不了（依赖东财代理）；部署到云函数后全部通`);
+  console.log(`  - gold-api.com 和首饰金价为新增参考源`);
+  console.log(`  - 招行 m.cmbchina.com 是最稳的源`);
+}
+
+main().catch(console.error);

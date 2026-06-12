@@ -2,9 +2,9 @@
  * 微信云函数 —— fetchGoldNow
  *
  * 职责：
- *   1. 调度 6 个银行适配器 + 3 个备份源并发抓取
- *   2. 标准化数据，写入云数据库 gold_prices 集合
- *   3. 标记 isStale、维护 succeeded/failed 计数
+ *   1. 调度 6 个银行适配器 + 2 个备份源 + 2 个额外参考源并发抓取
+ *   2. 银行价格写入 gold_prices 集合；额外数据写入 gold_extra 集合
+ *   3. 标记 isStale，维护 succeeded/failed 计数
  *
  * 触发方式：
  *   - 定时触发器（config.json）：每 5 分钟一次
@@ -14,7 +14,7 @@
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
-const { runAll } = require('./sources/_orchestrator');
+const { runAll, getAllExtraSources } = require('./sources/_orchestrator');
 const db = cloud.database();
 const _ = db.command;
 
@@ -22,17 +22,18 @@ exports.main = async (event, context) => {
   const startTime = Date.now();
   console.log('[fetchGoldNow] start', { trigger: event.$trigger || 'manual' });
 
-  // 1. 并发抓取
+  // 1. 并发抓取所有源
   const { results, succeeded, failed, totalLatencyMs } = await runAll();
-
-  // 2. 写库
   const now = Date.now();
-  const STALE_THRESHOLD = 30 * 60 * 1000;  // 30 分钟前视为 stale
-  const writeTasks = [];
-  let written = 0;
+  const STALE_THRESHOLD = 30 * 60 * 1000; // 30 分钟前视为 stale
 
-  for (const r of results) {
-    if (r.ok && r.sellPrice) {
+  // 2. 写入 gold_prices（仅银行/基准价格，有 sellPrice 的）
+  const bankResults = results.filter(r => r.ok && (r.sellPrice || r.midPrice));
+  const extraResults = results.filter(r => r.ok && !r.sellPrice && !r.midPrice); // 首饰金价等
+
+  let written = 0;
+  if (bankResults.length > 0) {
+    const writeTasks = bankResults.map(r => {
       const doc = {
         bank: r.bank,
         bankName: r.bankName,
@@ -44,41 +45,55 @@ exports.main = async (event, context) => {
         changePct: r.changePct,
         source: r.source,
         quoteTime: r.quoteTime,
-        fetchedAt: r.fetchedAt,
-        isStale: r.fetchedAt < (now - STALE_THRESHOLD),
+        fetchedAt: r.fetchedAt || now,
+        isStale: (r.fetchedAt || now) < (now - STALE_THRESHOLD),
         latencyMs: r.latencyMs,
         createdAt: now
       };
-      writeTasks.push(db.collection('gold_prices').add({ data: doc }).catch(err => ({
-        err: err.message
-      })));
-    }
+      return db.collection('gold_prices').add({ data: doc }).catch(() => null);
+    });
+    const writeResults = await Promise.all(writeTasks);
+    written = writeResults.filter(Boolean).length;
   }
 
-  const writeResults = await Promise.all(writeTasks);
-  written = writeResults.filter(r => !r || !r.err).length;
+  // 3. 写入 gold_extra（首饰金价、国际金价等额外数据）
+  if (extraResults.length > 0) {
+    const extraTasks = extraResults.map(r => {
+      return db.collection('gold_extra').add({
+        data: {
+          type: r.source.startsWith('gold-api') ? 'international' : 'jewelry',
+          name: r.bankName || r.name,
+          data: r,
+          fetchedAt: now,
+          createdAt: now
+        }
+      }).catch(() => null);
+    });
+    await Promise.all(extraTasks);
+  }
 
-  // 3. 清理 7 天前历史（避免数据库超 2GB 限额）
+  // 4. 清理 7 天前历史
   const SEVEN_DAYS_AGO = now - 7 * 24 * 60 * 60 * 1000;
   try {
     await db.collection('gold_prices')
       .where({ fetchedAt: _.lt(SEVEN_DAYS_AGO) })
       .remove();
+    await db.collection('gold_extra')
+      .where({ fetchedAt: _.lt(SEVEN_DAYS_AGO) })
+      .remove();
   } catch (err) {
-    console.warn('[fetchGoldNow] cleanup old data failed:', err.message);
+    console.warn('[fetchGoldNow] cleanup warn:', err.message);
   }
 
-  // 4. 更新 settings.lastCronRun
+  // 5. 更新 settings
   try {
     await db.collection('gold_settings').doc('global').update({
       data: { lastCronRun: now }
     });
-  } catch (err) {
-    // 首次可能 doc 不存在，忽略
-  }
+  } catch (_) {}
 
   const totalMs = Date.now() - startTime;
-  console.log(`[fetchGoldNow] done. sources=${results.length} ok=${succeeded} fail=${failed} written=${written} totalMs=${totalMs}`);
+  console.log(`[fetchGoldNow] done. bank=${bankResults.length} extra=${extraResults.length} written=${written} totalMs=${totalMs}`);
 
   return {
     ok: true,
@@ -88,6 +103,7 @@ exports.main = async (event, context) => {
     succeeded,
     failed,
     written,
-    data: results
+    bankData: bankResults,
+    extraData: extraResults
   };
 };

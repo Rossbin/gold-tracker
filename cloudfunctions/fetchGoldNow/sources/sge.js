@@ -1,11 +1,14 @@
 /**
- * 上海黄金交易所 —— Au99.99 基准价
+ * 上海黄金交易所 —— Au99.99 基准价（取日 K 线最后一条 = 最近一个交易日收盘价）
  *
  * 数据源：https://www.sge.com.cn/graph/Dailyhq (POST)
  * 交易时段：工作日 9:00-11:30, 13:30-15:30, 20:00-次日 02:30
  * 非交易时段返回最近一个收盘价。
  *
- * 作为整个系统的"基准价"，工/建/中/农/交 均以 SGE + 点差代理。
+ * 注意：SGE 官方未提供"秒级实时价"公开接口。本接口返回**最近一个交易日的收盘价**，
+ * 作为整个系统的"基准价"，供工/建/中/农/交 + 点差代理使用。
+ *
+ * 如果此接口超时/失败，会被 SgeProxyAdapter 兜底为东方财富实时价。
  */
 
 const BaseSource = require('./_base');
@@ -22,7 +25,7 @@ class SGESource extends BaseSource {
       name: 'SGE',
       displayName: '上海黄金交易所',
       type: 'backup',
-      timeout: 8000
+      timeout: 6000
     });
     this.url = 'https://www.sge.com.cn/graph/Dailyhq';
   }
@@ -55,10 +58,12 @@ class SGESource extends BaseSource {
     }
 
     // 期望响应：{ time: [['2026-06-12', '910.30', '912.50', '905.10', '909.85'], ...] }
-    let price, lastClose, change, quoteTime;
+    // 最后一根 K 线 = 最近一个交易日的收盘价
+    let price, lastClose, change, quoteTime, lastDate;
     if (body && Array.isArray(body.time) && body.time.length) {
       const last = body.time[body.time.length - 1];
       // last = [date, open, high, low, close]
+      lastDate = last[0];
       price = parseFloat(last[4]);
       const prev = body.time.length >= 2 ? body.time[body.time.length - 2] : null;
       lastClose = prev ? parseFloat(prev[4]) : parseFloat(last[1]);
@@ -67,6 +72,7 @@ class SGESource extends BaseSource {
     } else if (body && body.data && body.data.length) {
       // 兼容另一种结构
       const last = body.data[body.data.length - 1];
+      lastDate = last.date || last[0];
       price = parseFloat(last.close || last[4]);
       lastClose = parseFloat(last.open || last[1] || price);
       change = price - lastClose;
@@ -84,7 +90,8 @@ class SGESource extends BaseSource {
       change,
       changePct: lastClose ? (change / lastClose) * 100 : null,
       source: 'sge-official',
-      quoteTime
+      quoteTime,
+      lastTradeDate: lastDate
     };
   }
 }
