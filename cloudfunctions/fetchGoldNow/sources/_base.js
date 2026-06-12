@@ -16,7 +16,7 @@ class BaseSource {
     this.name = opts.name || 'unknown';
     this.displayName = opts.displayName || '未命名';
     this.type = opts.type || 'backup';
-    this.timeout = opts.timeout || 5000;
+    this.timeout = opts.timeout || 2500;
     this.product = opts.product || 'Au99.99';
   }
 
