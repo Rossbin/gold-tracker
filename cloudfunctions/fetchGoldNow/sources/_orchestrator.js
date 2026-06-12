@@ -49,8 +49,8 @@ function getAllExtraSources() {
 
 /**
  * 并发跑所有源
- * 微信云函数默认超时 3 秒，全局兜底 2.8 秒
- * 慢源（> 2.8s）直接丢弃，用已成功的结果
+ * 云函数超时已改为 20 秒（config.json），留足时间给慢源
+ * 全局兜底 15 秒，写库留 5 秒
  */
 async function runAll(opts = {}) {
   const banks   = opts.banks  || getAllBankSources();
@@ -58,7 +58,7 @@ async function runAll(opts = {}) {
   const extras  = opts.extras || getAllExtraSources();
 
   const start = Date.now();
-  const GLOBAL_TIMEOUT = 2500; // 2.5 秒，留 500ms 给写库
+  const GLOBAL_TIMEOUT = 15000; // 15 秒全局兜底
   const allSources = [...banks, ...backups, ...extras];
   const allPromises = allSources.map(src => src.fetch());
 
