@@ -3,7 +3,7 @@ App({
   globalData: {
     userInfo: null,
     refreshInterval: 60,    // 默认 60 秒轮询
-    notifyThreshold: 1,     // 异动推送阈值（百分比）
+    notifyThreshold: 10,     // 降价推送阈值（元/克），默认 10
     subscribeQuota: 0,      // 订阅消息剩余可接收条数
     lastPrices: {}          // 上一次的价格缓存（用于异动高亮判断）
   },

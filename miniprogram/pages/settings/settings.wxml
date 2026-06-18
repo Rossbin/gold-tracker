@@ -31,8 +31,8 @@
 
     <!-- 开启后展开的详细配置 -->
     <block wx:if="{{notifyEnabled}}">
-      <view class="sub-title">波动阈值</view>
-      <view class="section-desc">银行卖出价在两次抓取之间波动超过该比例时触发提醒</view>
+      <view class="sub-title">降价提醒阈值</view>
+      <view class="section-desc">当银行卖出价相对今日最高价每下降达到该金额时，推送一次提醒</view>
       <view class="options threshold-options">
         <view
           wx:for="{{thresholdOptions}}"

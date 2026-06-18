@@ -20,7 +20,8 @@ const db = cloud.database();
 const _ = db.command;
 
 const ALLOWED_INTERVALS = [10, 30, 60, 120, 300, 600];
-const ALLOWED_THRESHOLDS = [0.5, 1, 2, 3];
+// 新版阈值：降价金额（元/克）。旧版百分比数据已迁移兼容。
+const ALLOWED_THRESHOLDS = [5, 10, 20, 30];
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext();

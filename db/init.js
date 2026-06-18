@@ -30,7 +30,7 @@ async function ensureCollections(db) {
       data: {
         _id: 'global',
         refreshInterval: 60,
-        notifyThreshold: 1,
+        notifyThreshold: 10,
         notifyEnabled: false,
         createdAt: Date.now()
       }

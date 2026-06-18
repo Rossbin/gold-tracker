@@ -2,7 +2,7 @@
 const api = require('../../utils/api');
 
 // ⚠️ 在小程序后台「订阅消息」中申请「价格变动 / 到价提醒」类模板，
-// 把模板 ID 填到这里。模板需包含：品种、价格、涨跌幅、时间 等字段。
+// 把模板 ID 填到这里。模板建议包含：机构名称、当前价格、今日最高价格 等字段。
 const NOTIFY_TMPL_ID = 'YOUR_TEMPLATE_ID';
 
 const INTERVAL_OPTIONS = [
@@ -14,11 +14,12 @@ const INTERVAL_OPTIONS = [
   { value: 600, label: '10 分钟' }
 ];
 
+// 降价提醒金额阈值（元/克）：相对于今日最高价，每降多少元推送一次
 const THRESHOLD_OPTIONS = [
-  { value: 0.5, label: '0.5%（敏感）' },
-  { value: 1,   label: '1%（推荐）' },
-  { value: 2,   label: '2%' },
-  { value: 3,   label: '3%（稳健）' }
+  { value: 5,  label: '5 元（敏感）' },
+  { value: 10, label: '10 元（推荐）' },
+  { value: 20, label: '20 元' },
+  { value: 30, label: '30 元（稳健）' }
 ];
 
 Page({
@@ -26,23 +27,27 @@ Page({
     intervalOptions: INTERVAL_OPTIONS,
     currentInterval: 60,
     thresholdOptions: THRESHOLD_OPTIONS,
-    currentThreshold: 1,
+    currentThreshold: 10,
     notifyEnabled: false,
     subscribeQuota: 0
   },
 
   onLoad() {
-    // 优先用本地缓存初始化（首页轮询也依赖这些缓存）
+    // 注意：本地可能缓存了旧版的百分比阈值（0.5/1/2/3），新版默认值是 10 元
+    const cachedThreshold = wx.getStorageSync('notifyThreshold');
+    const validThreshold = THRESHOLD_OPTIONS.some(o => o.value === cachedThreshold)
+      ? cachedThreshold
+      : 10;
+
     this.setData({
       currentInterval: wx.getStorageSync('refreshInterval') || 60,
-      currentThreshold: wx.getStorageSync('notifyThreshold') || 1,
+      currentThreshold: validThreshold,
       notifyEnabled: wx.getStorageSync('notifyEnabled') || false,
       subscribeQuota: wx.getStorageSync('subscribeQuota') || 0
     });
   },
 
   onShow() {
-    // 每次进入设置页，尝试从云端同步最新配额（推送会扣减配额）
     this._syncQuotaFromCloud();
   },
 
@@ -51,14 +56,12 @@ Page({
     this.setData({ currentInterval: e.currentTarget.dataset.value });
   },
 
-  // ---- 异动推送开关 ----
+  // ---- 降价推送开关 ----
   onToggleNotify(e) {
     const val = e.detail.value;
     if (val) {
-      // 开启 = 发起一次订阅授权（必须在用户点击的同步上下文中调用）
       this._requestSubscribe();
     } else {
-      // 关闭：清空本地状态并通知云端移除订阅
       this.setData({ notifyEnabled: false, subscribeQuota: 0 });
       wx.setStorageSync('notifyEnabled', false);
       wx.setStorageSync('subscribeQuota', 0);
@@ -71,12 +74,11 @@ Page({
     }
   },
 
-  // ---- 阈值选择 ----
+  // ---- 降价阈值选择 ----
   onSelectThreshold(e) {
     const v = e.currentTarget.dataset.value;
     this.setData({ currentThreshold: v });
     wx.setStorageSync('notifyThreshold', v);
-    // 阈值变化实时同步到云端，避免用户忘记点保存
     if (this.data.notifyEnabled) {
       api.updateSettings({
         notifyEnabled: true,
@@ -95,10 +97,9 @@ Page({
     if (!NOTIFY_TMPL_ID || NOTIFY_TMPL_ID === 'YOUR_TEMPLATE_ID') {
       wx.showModal({
         title: '模板未配置',
-        content: '请先在小程序后台申请订阅消息模板，并将模板 ID 填入 settings.js 的 NOTIFY_TMPL_ID。',
+        content: '请先在小程序后台申请订阅消息模板，并将模板 ID 填入 settings.js 的 NOTIFY_TMPL_ID。模板建议包含：机构名称、当前价格、今日最高价格。',
         showCancel: false
       });
-      // 回退开关状态
       this.setData({ notifyEnabled: false });
       return;
     }
@@ -107,21 +108,18 @@ Page({
       tmplIds: [NOTIFY_TMPL_ID],
       success: (res) => {
         if (res[NOTIFY_TMPL_ID] === 'accept') {
-          // 用户同意：配额 +1
           const quota = (wx.getStorageSync('subscribeQuota') || 0) + 1;
           this.setData({ notifyEnabled: true, subscribeQuota: quota });
           wx.setStorageSync('notifyEnabled', true);
           wx.setStorageSync('subscribeQuota', quota);
           wx.setStorageSync('notifyThreshold', this.data.currentThreshold);
 
-          // 上报云端：注册/累加订阅用户配额
           api.updateSettings({
             notifyEnabled: true,
             notifyThreshold: this.data.currentThreshold,
             subscribeAction: 'add',
             tmplId: NOTIFY_TMPL_ID
           }).then(r => {
-            // 以云端返回的实际配额为准（防止多端不同步）
             if (r && r.settings && typeof r.settings.quota === 'number') {
               this.setData({ subscribeQuota: r.settings.quota });
               wx.setStorageSync('subscribeQuota', r.settings.quota);
@@ -130,7 +128,6 @@ Page({
 
           wx.showToast({ title: '订阅成功', icon: 'success' });
         } else {
-          // 用户拒绝或被限频
           this.setData({ notifyEnabled: this.data.subscribeQuota > 0 });
           wx.showToast({ title: '未授权订阅', icon: 'none' });
         }
@@ -154,10 +151,6 @@ Page({
       if (r && r.settings && typeof r.settings.quota === 'number') {
         this.setData({ subscribeQuota: r.settings.quota });
         wx.setStorageSync('subscribeQuota', r.settings.quota);
-        // 云端配额归零时，前端开关状态也校正
-        if (r.settings.quota === 0) {
-          // 配额用尽不代表关闭订阅，只是暂时无法推送，保留开关开启以便续订
-        }
       }
     } catch (e) {}
   },
@@ -173,6 +166,7 @@ Page({
       });
       const app = getApp();
       app.globalData.refreshInterval = this.data.currentInterval;
+      app.globalData.notifyThreshold = this.data.currentThreshold;
       wx.setStorageSync('refreshInterval', this.data.currentInterval);
       wx.setStorageSync('notifyThreshold', this.data.currentThreshold);
       wx.setStorageSync('notifyEnabled', this.data.notifyEnabled);
