@@ -101,20 +101,34 @@
       <view class="product-tag">XAU/USD</view>
     </view>
     <view class="card-main-price">
-      <view class="main-label">折合人民币（元/克）</view>
-      <view class="main-value intl-price">{{international.sellPriceText}}</view>
+      <view class="main-label">美元 / 盎司</view>
+      <view class="main-value intl-price">${{international.rawPriceUSD}}</view>
     </view>
     <view class="card-change-row">
       <view class="change-badge {{international.change > 0 ? 'up' : international.change < 0 ? 'down' : 'flat'}}">
         <text>{{international.changeText}} ({{international.changePctText}})</text>
       </view>
     </view>
-    <view class="card-footer" wx:if="{{international.rawPriceUSD}}">
+    <view class="intl-sub-row">
+      <view class="intl-sub-item">
+        <view class="intl-sub-label">折合人民币</view>
+        <view class="intl-sub-value">¥{{international.sellPriceText}}/克</view>
+      </view>
+      <view class="intl-sub-item" wx:if="{{international.highUSD}}">
+        <view class="intl-sub-label">日高</view>
+        <view class="intl-sub-value">${{international.highUSD}}</view>
+      </view>
+      <view class="intl-sub-item" wx:if="{{international.lowUSD}}">
+        <view class="intl-sub-label">日低</view>
+        <view class="intl-sub-value">${{international.lowUSD}}</view>
+      </view>
+    </view>
+    <view class="card-footer" wx:if="{{international.fxRate}}">
       <view class="footer-left">
-        <text class="footer-text">美元价: ${{international.rawPriceUSD}}/oz</text>
+        <text class="footer-text">汇率: 1 USD ≈ {{international.fxRate}} CNY</text>
       </view>
       <view class="footer-right">
-        <text class="footer-text">汇率: {{international.fxRate}}</text>
+        <text class="footer-time">{{international.quoteTimeText}}</text>
       </view>
     </view>
   </view>

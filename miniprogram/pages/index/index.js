@@ -83,13 +83,19 @@ Page({
         const isUp = item.change > 0;
         const isDown = item.change < 0;
 
+        // 最高价/最低价兜底：优先用 raw 里的东财行情，其次用当前卖出价
+        const rawEast = item.raw && (item.raw.eastData || item.raw.data);
+        const highPrice = item.highPrice || (rawEast && rawEast.high) || item.sellPrice;
+        const lowPrice = item.lowPrice || (rawEast && rawEast.low) || item.sellPrice;
+        const openPrice = item.openPrice || (rawEast && rawEast.open);
+
         return {
           ...item,
           sellPriceText: fmt.formatPrice(item.sellPrice),
           buyPriceText: fmt.formatPrice(item.buyPrice),
-          highPriceText: fmt.formatPrice(item.highPrice),
-          lowPriceText: fmt.formatPrice(item.lowPrice),
-          openPriceText: fmt.formatPrice(item.openPrice),
+          highPriceText: fmt.formatPrice(highPrice),
+          lowPriceText: fmt.formatPrice(lowPrice),
+          openPriceText: fmt.formatPrice(openPrice),
           changeText: fmt.formatChange(item.change),
           changePctText: fmt.formatChangePct(item.changePct),
           quoteTimeText: fmt.formatTime(item.quoteTime),
@@ -110,7 +116,11 @@ Page({
           sellPriceText: fmt.formatPrice(d.sellPrice),
           changeText: fmt.formatChange(d.change),
           changePctText: fmt.formatChangePct(d.changePct),
+          change: d.change,
+          changePct: d.changePct,
           rawPriceUSD: d.raw ? d.raw.priceUSD_oz : null,
+          highUSD: d.raw ? d.raw.highUSD_oz : null,
+          lowUSD: d.raw ? d.raw.lowUSD_oz : null,
           fxRate: d.raw ? d.raw.fxRate : null,
           quoteTimeText: fmt.formatTime(d.quoteTime)
         };

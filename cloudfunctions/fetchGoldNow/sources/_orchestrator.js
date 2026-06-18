@@ -11,6 +11,7 @@ const BCMSource       = require('./bcm');
 const SGESource       = require('./sge');
 const EastMoneySource = require('./eastmoney');
 const GoldAPISource   = require('./gold-api');
+const TencentSource   = require('./tencent');
 const JewelrySource   = require('./jewelry');
 
 /**
@@ -19,11 +20,11 @@ const JewelrySource   = require('./jewelry');
 function getAllBankSources() {
   return [
     new CMBSource(),   // 招行：真实 API
-    new ICBCSource(),  // 工行：东财代理
-    new CCBSource(),  // 建行：东财代理
+    new ICBCSource(),  // 工行：东财代理 + 工行代理
+    new CCBSource(),   // 建行：东财代理
     new BOCSource(),   // 中行：东财代理
     new ABCSource(),   // 农行：东财代理
-    new BCMSource()   // 交行：东财代理
+    new BCMSource()    // 交行：东财代理
   ];
 }
 
@@ -33,17 +34,21 @@ function getAllBankSources() {
 function getAllBackupSources() {
   return [
     new SGESource(),       // SGE 官方日 K（可能超时）
-    new EastMoneySource()   // 东财实时（最稳）
+    new EastMoneySource()  // 东财实时（最稳）
   ];
 }
 
 /**
  * 额外参考源（独立展示，不进主卡片）
+ *
+ * 国际金价同时取 gold-api.com 和腾讯 COMEX，
+ * 两者互备：gold-api 在部分云环境可能被限，腾讯在国内更稳定。
  */
 function getAllExtraSources() {
   return [
-    new GoldAPISource(),   // 国际金价 XAU/USD
-    new JewelrySource()     // 首饰金价（周大福等品牌）
+    new GoldAPISource(),   // 国际金价 XAU/USD（部分云环境可能被限）
+    new TencentSource(),   // 腾讯 COMEX 国际金价（国内稳定）
+    new JewelrySource()    // 首饰金价（周大福等品牌）
   ];
 }
 
