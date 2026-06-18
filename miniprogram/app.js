@@ -2,8 +2,10 @@
 App({
   globalData: {
     userInfo: null,
-    refreshInterval: 60,  // 默认 60 秒轮询
-    lastPrices: {}        // 上一次的价格缓存（用于异动高亮判断）
+    refreshInterval: 60,    // 默认 60 秒轮询
+    notifyThreshold: 1,     // 异动推送阈值（百分比）
+    subscribeQuota: 0,      // 订阅消息剩余可接收条数
+    lastPrices: {}          // 上一次的价格缓存（用于异动高亮判断）
   },
 
   onLaunch() {
@@ -19,12 +21,15 @@ App({
     this.loadSettings();
   },
 
-  async loadSettings() {
-    try {
-      const r = await wx.cloud.callFunction({ name: 'getLatestPrice' }).catch(() => null);
-      // getLatestPrice 本身不返回 settings，这里简单用本地缓存
-      const cached = wx.getStorageSync('refreshInterval');
-      if (cached) this.globalData.refreshInterval = cached;
-    } catch (e) {}
+  // 从本地缓存恢复用户设置到全局
+  loadSettings() {
+    const cachedInterval = wx.getStorageSync('refreshInterval');
+    if (cachedInterval) this.globalData.refreshInterval = cachedInterval;
+
+    const cachedThreshold = wx.getStorageSync('notifyThreshold');
+    if (cachedThreshold) this.globalData.notifyThreshold = cachedThreshold;
+
+    const cachedQuota = wx.getStorageSync('subscribeQuota');
+    if (typeof cachedQuota === 'number') this.globalData.subscribeQuota = cachedQuota;
   }
 });

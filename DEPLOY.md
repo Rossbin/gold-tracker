@@ -210,10 +210,18 @@ try {
 }
 
 try {
+  await db.createCollection('gold_subscribers');
+  console.log('created gold_subscribers');
+} catch (e) {
+  console.log('gold_subscribers:', e.errMsg || e.message);
+}
+
+try {
   await db.collection('gold_settings').add({
     data: {
       _id: 'global',
       refreshInterval: 60,
+      notifyThreshold: 1,
       notifyEnabled: false,
       createdAt: Date.now()
     }
@@ -237,10 +245,11 @@ return { ok: true };
 1. 云开发控制台 → 左侧 "数据库"
 2. 点 "+" → 新建集合
 3. 集合名输入 gold_prices → 确认
-4. 重复 2-3 步，再建一个集合 gold_settings
+4. 重复 2-3 步，再建集合 gold_settings 和 gold_subscribers
 5. 点进 gold_settings → 添加记录：
    - _id: global
    - refreshInterval: 60
+   - notifyThreshold: 1
    - notifyEnabled: false
    - createdAt: <当前时间戳，比如 1718160000000>
    - 保存
@@ -248,6 +257,37 @@ return { ok: true };
    - 字段名：bank，方向：升序
    - 字段名：fetchedAt，方向：降序
 ```
+
+---
+
+## 第 6.5 步：配置异动推送（可选）
+
+> 设置页的「异动推送」依赖微信「订阅消息」。不配置也能正常用小程序，只是打开推送开关时会提示模板未配置。
+
+### 1. 申请订阅消息模板
+
+```
+1. 登录 mp.weixin.qq.com → 功能 → 订阅消息
+2. 点"添加" → 在"公共模板库"里搜索"价格变动"或"到价提醒"
+3. 选一个含「品种/名称 + 价格 + 涨跌 + 时间」字段的模板 → 添加
+4. 添加后会得到一个模板 ID（形如 xXxXxXxX...）→ 复制下来
+```
+
+### 2. 把模板 ID 填进小程序代码
+
+打开 `miniprogram/pages/settings/settings.js`，顶部找到：
+
+```js
+const NOTIFY_TMPL_ID = 'YOUR_TEMPLATE_ID';
+```
+
+把 `'YOUR_TEMPLATE_ID'` 替换成上一步的模板 ID。
+
+### 3. 按实际模板调整云函数字段
+
+`cloudfunctions/fetchGoldNow/index.js` 的 `checkAndNotify` 里，`cloud.openapi.subscribeMessage.send` 的 `data` 字段名（`thing1` / `amount2` / `character_string3` / `time4`）要和你申请的模板字段一一对应。字段名不同就按模板提示改一下。
+
+> ⚠️ 微信订阅消息是「一次性」的：用户每授权一次只能收 1 条提醒。设置页提供「续订」按钮，配额耗尽后需重新点击授权。fetchGoldNow 每次抓取后会自动对比上次价格，超过用户设定阈值就推送并扣减 1 条配额。
 
 ---
 
@@ -315,6 +355,9 @@ return { ok: true };
 | 5 | 进入"设置"页 | 看到当前刷新间隔（默认 60s） |
 | 6 | 切换到 "5 分钟" | 显示"保存成功" |
 | 7 | 返回主页 | 卡片继续按 5 分钟节奏自动刷新 |
+| 8 | 设置页打开"异动推送"开关 | 弹出微信订阅授权，点"允许"后显示"订阅成功" |
+| 9 | 调整"波动阈值"为 0.5% | 选项高亮切换，自动同步到云端 |
+| 10 | 查看订阅状态卡片 | 显示"当前可接收提醒 1 条"，按钮变为"续订" |
 
 > 如果前 4 步都 OK，整个项目就**完整跑通了**。
 

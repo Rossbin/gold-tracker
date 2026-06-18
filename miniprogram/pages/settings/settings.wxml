@@ -18,16 +18,57 @@
   </view>
 
   <view class="section">
-    <view class="section-title">异动推送（暂未开放）</view>
-    <view class="section-desc">当金价在 1 分钟内波动超过 1% 时，通过微信消息提醒</view>
-    <switch checked="{{notifyEnabled}}" bindchange="onToggleNotify" disabled />
+    <view class="section-title">异动推送</view>
+    <view class="section-desc">金价波动超过设定阈值时，通过微信订阅消息提醒你。</view>
+
+    <view class="notify-row">
+      <view class="notify-label-wrap">
+        <text class="notify-label">开启推送</text>
+        <text class="notify-hint">基于微信「订阅消息」，每次订阅可接收 1 条提醒</text>
+      </view>
+      <switch checked="{{notifyEnabled}}" bindchange="onToggleNotify" color="#ffd700" />
+    </view>
+
+    <!-- 开启后展开的详细配置 -->
+    <block wx:if="{{notifyEnabled}}">
+      <view class="sub-title">波动阈值</view>
+      <view class="section-desc">银行卖出价在两次抓取之间波动超过该比例时触发提醒</view>
+      <view class="options threshold-options">
+        <view
+          wx:for="{{thresholdOptions}}"
+          wx:key="value"
+          class="option {{currentThreshold === item.value ? 'option-active' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="onSelectThreshold"
+        >
+          <text class="option-label">{{item.label}}</text>
+          <text wx:if="{{currentThreshold === item.value}}" class="option-check">✓</text>
+        </view>
+      </view>
+
+      <view class="subscribe-status {{subscribeQuota > 0 ? 'status-ok' : 'status-empty'}}">
+        <view class="status-line">
+          <text class="status-label">当前可接收提醒</text>
+          <text class="status-value">{{subscribeQuota}} 条</text>
+        </view>
+        <view wx:if="{{subscribeQuota === 0}}" class="status-tip">
+          配额已用完，下次金价异动将无法推送，请点击下方按钮续订
+        </view>
+        <view wx:else class="status-tip">
+          已订阅成功，异动发生时会自动推送并消耗 1 条配额
+        </view>
+        <button class="btn-resub" bindtap="onResubscribe">
+          {{subscribeQuota > 0 ? '续订（再 +1 条）' : '立即订阅'}}
+        </button>
+      </view>
+    </block>
   </view>
 
   <view class="section">
     <view class="section-title">关于</view>
     <view class="info-line">数据源：6 家银行官网 + 上海黄金交易所 + 东方财富 + 京东金融</view>
     <view class="info-line">部署：微信云开发（云函数 + 云数据库）</view>
-    <view class="info-line">版本：1.0.0</view>
+    <view class="info-line">版本：1.1.0</view>
   </view>
 
   <view class="action-bar">

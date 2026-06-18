@@ -8,7 +8,7 @@
 const cloud = require('wx-server-sdk');
 
 async function ensureCollections(db) {
-  const expected = ['gold_prices', 'gold_settings'];
+  const expected = ['gold_prices', 'gold_settings', 'gold_subscribers', 'gold_extra'];
 
   for (const name of expected) {
     try {
@@ -30,6 +30,7 @@ async function ensureCollections(db) {
       data: {
         _id: 'global',
         refreshInterval: 60,
+        notifyThreshold: 1,
         notifyEnabled: false,
         createdAt: Date.now()
       }
