@@ -1,12 +1,28 @@
 /**
- * 首饰金价 —— 从 jinrijinjia.cn 抓取
+ * 首饰金价 —— 使用 tmini.net 免费聚合 API
  *
- * 静态 HTML 页面，包含多个品牌金店的今日金价
- * 解析表格中的品牌名和价格
+ * 数据源：https://tmini.net/api/gold-price?type=json
+ * 返回字段：
+ *   - stores: 品牌金店饰品金价列表（周大福、老凤祥等）
+ *   - metals: 国际/国内贵金属行情
+ *   - banks: 银行投资金条价格
+ *
+ * 相比原 jinrijinjia.cn HTML 抓取，该 API 响应更快、更稳定，
+ * 且避免了部分网络环境下 TLS 握手失败的问题。
  */
 
 const BaseSource = require('./_base');
 const { fetch } = require('./_http');
+
+// 首页优先展示的品牌
+const FEATURED = ['周大福', '周生生', '老凤祥', '六福珠宝', '老庙黄金', '中国黄金'];
+
+// 需要从 stores 列表中排除的非品牌汇总项
+const EXCLUDE_KEYWORDS = [
+  '今日金价', '黄金价格', '黄金9999', '黄金T+D',
+  '伦敦金', '纽约黄金', '白银价格', '铂金价格', '钯金价格',
+  '投资类', '投资金条'
+];
 
 class JewelrySource extends BaseSource {
   constructor() {
@@ -16,26 +32,60 @@ class JewelrySource extends BaseSource {
       type: 'jewelry',
       timeout: 8000
     });
+    this.url = 'https://tmini.net/api/gold-price?type=json';
   }
 
   async fetchOne() {
-    const url = 'https://www.jinrijinjia.cn/hjjg/9500.html';
-    const html = await fetch(url, {
+    const body = await fetch(this.url, {
       timeout: 7000,
-      headers: { 'Accept-Language': 'zh-CN,zh;q=0.9' }
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Language': 'zh-CN,zh;q=0.9'
+      }
     });
 
-    if (!html || html.length < 200) {
+    if (!body || body.length < 50) {
       throw new Error('jewelry: empty response');
     }
 
-    const brands = this._parseHTML(html);
-    if (brands.length === 0) {
-      throw new Error('jewelry: no brands parsed from ' + url);
+    let json;
+    try {
+      json = JSON.parse(body);
+    } catch (e) {
+      throw new Error('jewelry: invalid JSON response');
     }
 
-    // 精选品牌
-    const FEATURED = ['周大福', '周生生', '老凤祥', '六福珠宝', '老庙黄金', '中国黄金'];
+    const stores = (json && Array.isArray(json.stores)) ? json.stores : [];
+    if (!stores.length) {
+      throw new Error('jewelry: no stores data');
+    }
+
+    // 提取品牌首饰店，排除汇总项和异常价格
+    const brands = [];
+    const seen = new Set();
+    for (const s of stores) {
+      const brandName = String(s.brand || '').trim();
+      const price = parseFloat(s.price);
+
+      if (!brandName || isNaN(price) || price < 500 || price > 2000) continue;
+      if (EXCLUDE_KEYWORDS.some(k => brandName.includes(k))) continue;
+      if (seen.has(brandName)) continue;
+
+      seen.add(brandName);
+      brands.push({
+        brand: brandName,
+        product: '足金999',
+        price,
+        unit: '元/克',
+        updatedAt: s.updated || json.date || new Date().toISOString()
+      });
+    }
+
+    if (!brands.length) {
+      throw new Error('jewelry: no brand stores parsed');
+    }
+
+    // 精选品牌映射
     const featured = {};
     for (const b of brands) {
       if (FEATURED.includes(b.brand)) {
@@ -43,110 +93,25 @@ class JewelrySource extends BaseSource {
       }
     }
 
+    // 取行情时间：优先用 metals 里的更新时间，否则用日期
+    const quoteTime = json.metals && json.metals[0] && json.metals[0].updated
+      ? json.metals[0].updated
+      : (json.date || new Date().toISOString());
+
     return {
       product: '首饰金价',
       bank: 'JEWELRY',
       bankName: '首饰金价',
       brands: brands.slice(0, 15),
       featured,
-      source: 'jewelry-html',
-      quoteTime: brands[0]?.updatedAt || new Date().toISOString(),
-      raw: { count: brands.length, sample: brands.slice(0, 3) }
-    };
-  }
-
-  _parseHTML(html) {
-    const brands = [];
-
-    // 品牌映射表
-    const BRAND_MAP = {
-      '周大福': '周大福', '老凤祥': '老凤祥', '周生生': '周生生',
-      '六福': '六福珠宝', '六福珠宝': '六福珠宝',
-      '老庙黄金': '老庙黄金', '老庙': '老庙黄金',
-      '菜百': '菜百首饰', '菜百首饰': '菜百首饰',
-      '中国黄金': '中国黄金', '潮宏基': '潮宏基',
-      '谢瑞麟': '谢瑞麟', '周六福': '周六福', '周大生': '周大生',
-      '金至尊': '金至尊', '宝庆': '宝庆银楼',
-      '老铺黄金': '老铺黄金', '梦金园': '梦金园',
-      '周大福(内地)': '周大福', '周大福(香港)': '周大福(香港)'
-    };
-
-    // 匹配品牌 + 价格
-    const PATTERNS = [
-      /周大福[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /老凤祥[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /周生生[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /六福珠?宝?[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /老庙黄金[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /中国黄金[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /潮宏基[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-      /菜百[^\d]?[\s\S]{0,30}(\d{3,4})\s*元\s*[/／]?\s*克/g,
-    ];
-
-    const seen = new Set();
-
-    for (const pat of PATTERNS) {
-      const brandName = pat.source.match(/^([^\d]+)/)?.[1] || '';
-      let match;
-      while ((match = pat.exec(html)) !== null) {
-        const price = parseInt(match[1]);
-        if (price > 500 && price < 2000) {
-          // 提取品牌名
-          let canonicalBrand = brandName.replace(/[^\u4e00-\u9fa5]/g, '');
-          canonicalBrand = BRAND_MAP[canonicalBrand] || canonicalBrand;
-
-          if (!seen.has(canonicalBrand)) {
-            seen.add(canonicalBrand);
-            brands.push({
-              brand: canonicalBrand,
-              product: '足金999',
-              price,
-              unit: '元/克',
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
+      source: 'tmini-api',
+      quoteTime,
+      raw: {
+        count: brands.length,
+        sample: brands.slice(0, 3),
+        date: json.date
       }
-    }
-
-    // 表格解析兜底
-    if (brands.length === 0) {
-      const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
-      let currentBrand = null;
-
-      for (const row of rows) {
-        const cells = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
-        for (const cell of cells) {
-          const text = cell.replace(/<[^>]+>/g, '').trim();
-
-          // 找品牌
-          for (const [pattern, canonical] of Object.entries(BRAND_MAP)) {
-            if (text.includes(pattern)) {
-              currentBrand = canonical;
-              break;
-            }
-          }
-
-          // 找价格
-          const priceM = text.match(/(\d{3,4})\s*元\s*[/／]?\s*克/);
-          if (priceM && currentBrand && !seen.has(currentBrand)) {
-            const price = parseInt(priceM[1]);
-            if (price > 500 && price < 2000) {
-              seen.add(currentBrand);
-              brands.push({
-                brand: currentBrand,
-                product: '足金999',
-                price,
-                unit: '元/克',
-                updatedAt: new Date().toISOString()
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return brands;
+    };
   }
 }
 

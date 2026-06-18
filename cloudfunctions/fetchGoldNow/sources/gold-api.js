@@ -16,18 +16,20 @@ class GoldAPIIntlSource extends BaseSource {
       name: 'INTL',
       displayName: '国际金价',
       type: 'international',
-      timeout: 6000
+      timeout: 3000
     });
   }
 
   async fetchOne() {
-    // 并发请求：金价 + 汇率
-    const [priceBody, fxBody] = await Promise.all([
-      fetch('https://api.gold-api.com/price/XAU', { timeout: 5000 }),
+    // 并发请求：金价 + 汇率；任一失败也用默认汇率兜底，不整体失败
+    const [priceRes, fxRes] = await Promise.allSettled([
+      fetch('https://api.gold-api.com/price/XAU', { timeout: 2500 }),
       this._fetchFX()
     ]);
+    const priceBody = priceRes.status === 'fulfilled' ? priceRes.value : null;
+    const fxBody = fxRes.status === 'fulfilled' ? fxRes.value : null;
 
-    // 解析金价
+    if (!priceBody) throw new Error('gold-api: price fetch failed');
     let priceJSON;
     try {
       priceJSON = parseJSONP(priceBody);
